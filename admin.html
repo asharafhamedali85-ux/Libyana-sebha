@@ -1,92 +1,1044 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة إدارة الحضور | مقسم سبها</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-body{margin:0;background:#f6f3fa;color:#17203a;font-family:Tahoma,Arial,sans-serif}
-.wrap{max-width:1100px;margin:auto;padding:22px}
-.card{background:#fff;border-radius:22px;padding:22px;margin:14px 0;box-shadow:0 10px 30px #3f1c6412}
-h1{color:#5f237f;margin-top:0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.stat{padding:18px;border-radius:16px;background:#faf8fd;text-align:center}.stat b{display:block;font-size:28px;color:#6d28a9}
-input,button{font:inherit;padding:12px;border-radius:12px;border:1px solid #ddd4e9}
-button{cursor:pointer;background:#6d28a9;color:white;border:0}
-table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #eee;text-align:right}
-#app{display:none}@media(max-width:700px){.grid{grid-template-columns:1fr}table{font-size:12px}}
-</style>
-</head>
-<body>
-<div class="wrap">
-<div class="card" id="login">
-<h1>لوحة إدارة الحضور — مقسم سبها</h1>
-<p>تسجيل دخول الإدارة</p>
-<input id="email" type="email" placeholder="البريد الإلكتروني" style="width:100%;box-sizing:border-box;margin-bottom:10px">
-<input id="password" type="password" placeholder="كلمة المرور" style="width:100%;box-sizing:border-box;margin-bottom:10px">
-<button id="loginBtn">دخول</button>
-<p id="msg"></p>
-</div>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<div id="app">
-<div class="card">
-<h1>لوحة الحضور المركزية</h1>
-<button id="logout" style="float:left">تسجيل الخروج</button>
-<p>السجلات المعروضة من قاعدة البيانات المركزية.</p>
-</div>
-<div class="grid">
-<div class="stat">إجمالي السجلات<b id="total">0</b></div>
-<div class="stat">الصباحية<b id="morning">0</b></div>
-<div class="stat">المسائية + الليلية<b id="other">0</b></div>
-</div>
-<div class="card">
-<button id="refresh">تحديث</button>
-<button id="csv">تصدير CSV</button>
-<table><thead><tr><th>الاسم</th><th>الرقم</th><th>الفترة</th><th>التاريخ والوقت</th></tr></thead><tbody id="rows"></tbody></table>
-</div>
-</div>
-</div>
+  <title>لوحة إدارة الحضور | مقسم سبها</title>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f6f3fa;
+      color: #17203a;
+      font-family: Tahoma, Arial, sans-serif;
+    }
+
+    .container {
+      width: min(1100px, 94%);
+      margin: 30px auto;
+    }
+
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 8px 30px rgba(60, 30, 90, 0.10);
+    }
+
+    h1 {
+      color: #5f237f;
+      margin-top: 0;
+    }
+
+    .login-box {
+      max-width: 480px;
+      margin: 60px auto;
+    }
+
+    label {
+      display: block;
+      margin: 12px 0 6px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #ddd4e9;
+      border-radius: 12px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #6d28a9;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 13px 20px;
+      font-size: 15px;
+      cursor: pointer;
+      background: #6d28a9;
+      color: white;
+    }
+
+    button:hover {
+      opacity: 0.92;
+    }
+
+    .login-button {
+      width: 100%;
+      margin-top: 18px;
+    }
+
+    .secondary {
+      background: #555;
+    }
+
+    .danger {
+      background: #a52a2a;
+    }
+
+    #message {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 10px;
+      display: none;
+      line-height: 1.6;
+    }
+
+    .success {
+      display: block !important;
+      background: #e9f8ef;
+      color: #176b35;
+    }
+
+    .error {
+      display: block !important;
+      background: #fff0f0;
+      color: #a52020;
+    }
+
+    #dashboard {
+      display: none;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+    }
+
+    .stat {
+      background: #faf8fd;
+      border-radius: 16px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .stat-title {
+      font-size: 15px;
+      color: #666;
+    }
+
+    .stat-number {
+      display: block;
+      font-size: 32px;
+      font-weight: bold;
+      color: #6d28a9;
+      margin-top: 8px;
+    }
+
+    .table-wrapper {
+      overflow-x: auto;
+      margin-top: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      text-align: right;
+    }
+
+    th {
+      background: #f8f4fb;
+      color: #5f237f;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    @media (max-width: 700px) {
+      .container {
+        width: 94%;
+        margin: 15px auto;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: stretch;
+      }
+
+      .topbar button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+
+    <!-- تسجيل الدخول -->
+    <section id="loginBox" class="card login-box">
+
+      <h1>لوحة إدارة الحضور</h1>
+
+      <p>
+        <strong>مقسم سبها</strong>
+      </p>
+
+      <p>
+        قم بتسجيل الدخول للوصول إلى سجل الحضور المركزي.
+      </p>
+
+      <label for="email">البريد الإلكتروني</label>
+
+      <input
+        id="email"
+        type="email"
+        autocomplete="username"
+        placeholder="example@email.com"
+      >
+
+      <label for="password">كلمة المرور</label>
+
+      <input
+        id="password"
+        type="password"
+        autocomplete="current-password"
+        placeholder="كلمة المرور"
+      >
+
+      <button
+        id="loginButton"
+        class="login-button"
+        type="button"
+      >
+        دخول
+      </button>
+
+      <div id="message"></div>
+
+    </section>
+
+
+    <!-- لوحة الإدارة -->
+    <section id="dashboard">
+
+      <div class="card">
+
+        <div class="topbar">
+
+          <div>
+            <h1>لوحة الحضور المركزية</h1>
+
+            <p>
+              مقسم سبها
+            </p>
+          </div>
+
+          <div class="actions">
+
+            <button
+              id="refreshButton"
+              type="button"
+            >
+              تحديث
+            </button>
+
+            <button
+              id="logoutButton"
+              class="danger"
+              type="button"
+            >
+              تسجيل الخروج
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- الإحصائيات -->
+      <div class="stats">
+
+        <div class="stat">
+          <div class="stat-title">
+            إجمالي الحضور
+          </div>
+
+          <span
+            id="totalCount"
+            class="stat-number"
+          >
+            0
+          </span>
+        </div>
+
+
+        <div class="stat">
+          <div class="stat-title">
+            الفترة الصباحية
+          </div>
+
+          <span
+            id="morningCount"
+            class="stat-number"
+          >
+            0
+          </span>
+        </div>
+
+
+        <div class="stat">
+          <div class="stat-title">
+            المسائية والليلية
+          </div>
+
+          <span
+            id="otherCount"
+            class="stat-number"
+          >
+            0
+          </span>
+        </div>
+
+      </div>
+
+
+      <!-- السجل -->
+      <div class="card">
+
+        <div class="topbar">
+
+          <h2>
+            سجل الحضور
+          </h2>
+
+          <button
+            id="exportButton"
+            type="button"
+          >
+            تصدير CSV
+          </button>
+
+        </div>
+
+        <div
+          id="tableStatus"
+          class="loading"
+        >
+          جاري تحميل السجلات...
+        </div>
+
+        <div class="table-wrapper">
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>اسم الموظف</th>
+                <th>الرقم الوظيفي</th>
+                <th>الفترة</th>
+                <th>وقت التسجيل</th>
+              </tr>
+
+            </thead>
+
+            <tbody id="attendanceTable">
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </div>
+
 
 <script>
-const SUPABASE_URL = "https://pljercihjewuepysqlvk.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Zyf2OWbtCq8f7JoMO9tATg_z9qXf7z9
-";
-const sb = (SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("هنا"))
- ? window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY) : null;
 
-const $=id=>document.getElementById(id);
-function message(x){$("msg").textContent=x}
+/* =========================================================
+   إعداد Supabase
+   ========================================================= */
 
-$("loginBtn").onclick=async()=>{
- if(!sb){message("أكمل إعداد Supabase أولاً.");return}
- const {error}=await sb.auth.signInWithPassword({email:$("email").value,password:$("password").value});
- if(error){message(error.message);return}
- showApp();
-};
+const SUPABASE_URL =
+  "https://pljercihjewuepysqlvk.supabase.co";
 
-async function showApp(){
- $("login").style.display="none"; $("app").style.display="block"; await load();
+
+/*
+   ضع Publishable Key هنا فقط.
+
+   مثال:
+
+   const SUPABASE_PUBLISHABLE_KEY =
+     "sb_publishable_xxxxxxxxx";
+
+   لا تضع Secret Key أو service_role.
+*/
+
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_Zyf2OWbtCq8f7JoMO9tATg_z9qXf7z9";
+
+
+/* إنشاء اتصال Supabase */
+
+const supabaseClient =
+  window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+  );
+
+
+/* =========================================================
+   عناصر الصفحة
+   ========================================================= */
+
+const loginBox =
+  document.getElementById("loginBox");
+
+const dashboard =
+  document.getElementById("dashboard");
+
+const emailInput =
+  document.getElementById("email");
+
+const passwordInput =
+  document.getElementById("password");
+
+const loginButton =
+  document.getElementById("loginButton");
+
+const logoutButton =
+  document.getElementById("logoutButton");
+
+const refreshButton =
+  document.getElementById("refreshButton");
+
+const exportButton =
+  document.getElementById("exportButton");
+
+const messageBox =
+  document.getElementById("message");
+
+const attendanceTable =
+  document.getElementById("attendanceTable");
+
+const tableStatus =
+  document.getElementById("tableStatus");
+
+const totalCount =
+  document.getElementById("totalCount");
+
+const morningCount =
+  document.getElementById("morningCount");
+
+const otherCount =
+  document.getElementById("otherCount");
+
+
+let currentRows = [];
+
+
+/* =========================================================
+   رسائل للمستخدم
+   ========================================================= */
+
+function showMessage(text, type) {
+
+  messageBox.textContent = text;
+
+  messageBox.className = "";
+
+  messageBox.classList.add(type);
+
 }
-$("logout").onclick=async()=>{await sb.auth.signOut();location.reload()};
-$("refresh").onclick=load;
 
-async function load(){
- const {data,error}=await sb.from("attendance").select("*").order("registered_at",{ascending:false}).limit(1000);
- if(error){alert(error.message);return}
- $("total").textContent=data.length;
- $("morning").textContent=data.filter(x=>x.shift==="الفترة الصباحية").length;
- $("other").textContent=data.filter(x=>x.shift!=="الفترة الصباحية").length;
- $("rows").innerHTML=data.map(x=>`<tr><td>${esc(x.employee_name)}</td><td>${esc(x.employee_id)}</td><td>${esc(x.shift)}</td><td>${new Date(x.registered_at).toLocaleString("ar-LY")}</td></tr>`).join("");
- window.currentRows=data;
+
+/* =========================================================
+   تسجيل الدخول
+   ========================================================= */
+
+loginButton.addEventListener("click", login);
+
+
+/* السماح بالضغط على Enter */
+
+passwordInput.addEventListener("keydown", function(event) {
+
+  if (event.key === "Enter") {
+    login();
+  }
+
+});
+
+
+async function login() {
+
+  const email =
+    emailInput.value.trim();
+
+  const password =
+    passwordInput.value;
+
+
+  if (!email) {
+
+    showMessage(
+      "يرجى إدخال البريد الإلكتروني.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  if (!password) {
+
+    showMessage(
+      "يرجى إدخال كلمة المرور.",
+      "error"
+    );
+
+    return;
+  }
+
+
+  loginButton.disabled = true;
+
+  loginButton.textContent =
+    "جاري تسجيل الدخول...";
+
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+
+    if (error) {
+
+      console.error(error);
+
+      showMessage(
+        "فشل تسجيل الدخول: " +
+        error.message,
+        "error"
+      );
+
+      return;
+    }
+
+
+    if (!data || !data.session) {
+
+      showMessage(
+        "لم يتم إنشاء جلسة تسجيل الدخول.",
+        "error"
+      );
+
+      return;
+    }
+
+
+    showMessage(
+      "تم تسجيل الدخول بنجاح.",
+      "success"
+    );
+
+
+    loginBox.style.display =
+      "none";
+
+    dashboard.style.display =
+      "block";
+
+
+    await loadAttendance();
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    showMessage(
+      "حدث خطأ أثناء الاتصال بـ Supabase.",
+      "error"
+    );
+
+  }
+
+  finally {
+
+    loginButton.disabled = false;
+
+    loginButton.textContent =
+      "دخول";
+
+  }
+
 }
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-$("csv").onclick=()=>{
- const data=window.currentRows||[];
- const lines=[["الاسم","الرقم الوظيفي","الفترة","وقت التسجيل"],...data.map(x=>[x.employee_name,x.employee_id,x.shift,new Date(x.registered_at).toLocaleString("ar-LY")])];
- const csv="\uFEFF"+lines.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");
- const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="سجل_حضور_مقسم_سبها.csv";a.click();
-};
-(async()=>{if(sb){const {data:{session}}=await sb.auth.getSession();if(session)showApp()}})();
+
+
+/* =========================================================
+   التحقق من الجلسة عند فتح الصفحة
+   ========================================================= */
+
+async function checkSession() {
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient.auth.getSession();
+
+
+    if (error) {
+
+      console.error(error);
+
+      return;
+    }
+
+
+    if (data && data.session) {
+
+      loginBox.style.display =
+        "none";
+
+      dashboard.style.display =
+        "block";
+
+      await loadAttendance();
+
+    }
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+  }
+
+}
+
+
+/* =========================================================
+   تحميل سجلات الحضور
+   ========================================================= */
+
+async function loadAttendance() {
+
+  tableStatus.style.display =
+    "block";
+
+  tableStatus.textContent =
+    "جاري تحميل السجلات...";
+
+
+  attendanceTable.innerHTML =
+    "";
+
+
+  try {
+
+    const {
+      data,
+      error
+    } =
+      await supabaseClient
+        .from("attendance")
+        .select("*")
+        .order(
+          "registered_at",
+          {
+            ascending: false
+          }
+        )
+        .limit(1000);
+
+
+    if (error) {
+
+      console.error(error);
+
+      tableStatus.textContent =
+        "تعذر تحميل السجلات: " +
+        error.message;
+
+      return;
+    }
+
+
+    currentRows =
+      data || [];
+
+
+    updateStatistics(
+      currentRows
+    );
+
+
+    renderTable(
+      currentRows
+    );
+
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    tableStatus.textContent =
+      "حدث خطأ أثناء تحميل البيانات.";
+
+  }
+
+}
+
+
+/* =========================================================
+   الإحصائيات
+   ========================================================= */
+
+function updateStatistics(rows) {
+
+  const total =
+    rows.length;
+
+
+  const morning =
+    rows.filter(function(row) {
+
+      return row.shift ===
+        "الفترة الصباحية";
+
+    }).length;
+
+
+  const other =
+    total - morning;
+
+
+  totalCount.textContent =
+    total;
+
+  morningCount.textContent =
+    morning;
+
+  otherCount.textContent =
+    other;
+
+}
+
+
+/* =========================================================
+   عرض الجدول
+   ========================================================= */
+
+function renderTable(rows) {
+
+  attendanceTable.innerHTML =
+    "";
+
+
+  if (!rows.length) {
+
+    tableStatus.style.display =
+      "block";
+
+    tableStatus.textContent =
+      "لا توجد سجلات حضور حتى الآن.";
+
+    return;
+  }
+
+
+  tableStatus.style.display =
+    "none";
+
+
+  rows.forEach(function(row) {
+
+    const tr =
+      document.createElement("tr");
+
+
+    const name =
+      document.createElement("td");
+
+    name.textContent =
+      row.employee_name || "";
+
+
+    const employeeId =
+      document.createElement("td");
+
+    employeeId.textContent =
+      row.employee_id || "";
+
+
+    const shift =
+      document.createElement("td");
+
+    shift.textContent =
+      row.shift || "";
+
+
+    const date =
+      document.createElement("td");
+
+    date.textContent =
+      formatDate(
+        row.registered_at
+      );
+
+
+    tr.appendChild(name);
+
+    tr.appendChild(employeeId);
+
+    tr.appendChild(shift);
+
+    tr.appendChild(date);
+
+
+    attendanceTable.appendChild(tr);
+
+  });
+
+}
+
+
+/* =========================================================
+   تنسيق التاريخ
+   ========================================================= */
+
+function formatDate(value) {
+
+  if (!value) {
+    return "";
+  }
+
+
+  const date =
+    new Date(value);
+
+
+  return date.toLocaleString(
+    "ar-LY",
+    {
+      dateStyle: "medium",
+      timeStyle: "short"
+    }
+  );
+
+}
+
+
+/* =========================================================
+   تحديث البيانات
+   ========================================================= */
+
+refreshButton.addEventListener(
+  "click",
+  loadAttendance
+);
+
+
+/* =========================================================
+   تسجيل الخروج
+   ========================================================= */
+
+logoutButton.addEventListener(
+  "click",
+  async function() {
+
+    await supabaseClient.auth.signOut();
+
+    dashboard.style.display =
+      "none";
+
+    loginBox.style.display =
+      "block";
+
+    emailInput.value =
+      "";
+
+    passwordInput.value =
+      "";
+
+    showMessage(
+      "تم تسجيل الخروج.",
+      "success"
+    );
+
+  }
+);
+
+
+/* =========================================================
+   تصدير CSV
+   ========================================================= */
+
+exportButton.addEventListener(
+  "click",
+  exportCSV
+);
+
+
+function exportCSV() {
+
+  if (!currentRows.length) {
+
+    alert(
+      "لا توجد سجلات لتصديرها."
+    );
+
+    return;
+  }
+
+
+  const header = [
+    "اسم الموظف",
+    "الرقم الوظيفي",
+    "الفترة",
+    "وقت التسجيل"
+  ];
+
+
+  const lines = [
+    header
+  ];
+
+
+  currentRows.forEach(function(row) {
+
+    lines.push([
+      row.employee_name || "",
+      row.employee_id || "",
+      row.shift || "",
+      formatDate(row.registered_at)
+    ]);
+
+  });
+
+
+  const csv =
+    "\uFEFF" +
+    lines
+      .map(function(row) {
+
+        return row
+          .map(function(value) {
+
+            return '"' +
+              String(value)
+                .replaceAll('"', '""') +
+              '"';
+
+          })
+          .join(",");
+
+      })
+      .join("\n");
+
+
+  const blob =
+    new Blob(
+      [csv],
+      {
+        type:
+          "text/csv;charset=utf-8;"
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(blob);
+
+
+  const link =
+    document.createElement("a");
+
+
+  link.href =
+    url;
+
+  link.download =
+    "سجل_حضور_مقسم_سبها.csv";
+
+
+  document.body.appendChild(link);
+
+  link.click();
+
+  link.remove();
+
+
+  URL.revokeObjectURL(url);
+
+}
+
+
+/* =========================================================
+   تشغيل الصفحة
+   ========================================================= */
+
+checkSession();
+
 </script>
+
 </body>
 </html>
