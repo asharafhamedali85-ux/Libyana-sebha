@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة إدارة الحضور | مقسم سبها</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{margin:0;background:#f6f3fa;color:#17203a;font-family:Tahoma,Arial,sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:22px}
+.card{background:#fff;border-radius:22px;padding:22px;margin:14px 0;box-shadow:0 10px 30px #3f1c6412}
+h1{color:#5f237f;margin-top:0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{padding:18px;border-radius:16px;background:#faf8fd;text-align:center}.stat b{display:block;font-size:28px;color:#6d28a9}
+input,button{font:inherit;padding:12px;border-radius:12px;border:1px solid #ddd4e9}
+button{cursor:pointer;background:#6d28a9;color:white;border:0}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid #eee;text-align:right}
+#app{display:none}@media(max-width:700px){.grid{grid-template-columns:1fr}table{font-size:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="card" id="login">
+<h1>لوحة إدارة الحضور — مقسم سبها</h1>
+<p>تسجيل دخول الإدارة</p>
+<input id="email" type="email" placeholder="البريد الإلكتروني" style="width:100%;box-sizing:border-box;margin-bottom:10px">
+<input id="password" type="password" placeholder="كلمة المرور" style="width:100%;box-sizing:border-box;margin-bottom:10px">
+<button id="loginBtn">دخول</button>
+<p id="msg"></p>
+</div>
+
+<div id="app">
+<div class="card">
+<h1>لوحة الحضور المركزية</h1>
+<button id="logout" style="float:left">تسجيل الخروج</button>
+<p>السجلات المعروضة من قاعدة البيانات المركزية.</p>
+</div>
+<div class="grid">
+<div class="stat">إجمالي السجلات<b id="total">0</b></div>
+<div class="stat">الصباحية<b id="morning">0</b></div>
+<div class="stat">المسائية + الليلية<b id="other">0</b></div>
+</div>
+<div class="card">
+<button id="refresh">تحديث</button>
+<button id="csv">تصدير CSV</button>
+<table><thead><tr><th>الاسم</th><th>الرقم</th><th>الفترة</th><th>التاريخ والوقت</th></tr></thead><tbody id="rows"></tbody></table>
+</div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL = "ضع_رابط_مشروع_Supabase_هنا";
+const SUPABASE_PUBLISHABLE_KEY = "ضع_المفتاح_العام_هنا";
+const sb = (SUPABASE_URL.startsWith("https://") && !SUPABASE_URL.includes("هنا"))
+ ? window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY) : null;
+
+const $=id=>document.getElementById(id);
+function message(x){$("msg").textContent=x}
+
+$("loginBtn").onclick=async()=>{
+ if(!sb){message("أكمل إعداد Supabase أولاً.");return}
+ const {error}=await sb.auth.signInWithPassword({email:$("email").value,password:$("password").value});
+ if(error){message(error.message);return}
+ showApp();
+};
+
+async function showApp(){
+ $("login").style.display="none"; $("app").style.display="block"; await load();
+}
+$("logout").onclick=async()=>{await sb.auth.signOut();location.reload()};
+$("refresh").onclick=load;
+
+async function load(){
+ const {data,error}=await sb.from("attendance").select("*").order("registered_at",{ascending:false}).limit(1000);
+ if(error){alert(error.message);return}
+ $("total").textContent=data.length;
+ $("morning").textContent=data.filter(x=>x.shift==="الفترة الصباحية").length;
+ $("other").textContent=data.filter(x=>x.shift!=="الفترة الصباحية").length;
+ $("rows").innerHTML=data.map(x=>`<tr><td>${esc(x.employee_name)}</td><td>${esc(x.employee_id)}</td><td>${esc(x.shift)}</td><td>${new Date(x.registered_at).toLocaleString("ar-LY")}</td></tr>`).join("");
+ window.currentRows=data;
+}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+$("csv").onclick=()=>{
+ const data=window.currentRows||[];
+ const lines=[["الاسم","الرقم الوظيفي","الفترة","وقت التسجيل"],...data.map(x=>[x.employee_name,x.employee_id,x.shift,new Date(x.registered_at).toLocaleString("ar-LY")])];
+ const csv="\uFEFF"+lines.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");
+ const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));a.download="سجل_حضور_مقسم_سبها.csv";a.click();
+};
+(async()=>{if(sb){const {data:{session}}=await sb.auth.getSession();if(session)showApp()}})();
+</script>
+</body>
+</html>
